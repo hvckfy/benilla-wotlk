@@ -716,8 +716,9 @@ pub enum SessionEvent {
     Calendar(crate::messages::CalendarPacket),
     /// `SMSG_INSTANCE_DIFFICULTY`: the entered map's difficulty, 0-based, and the dynamic one.
     InstanceDifficulty { difficulty: u32, dynamic: u32 },
-    /// A trial account's whisper cap (`SMSG_CHAT_RESTRICTED`, empty body): error id `0x1c3`.
-    ChatRestricted,
+    /// A chat message refused (`SMSG_CHAT_RESTRICTED`): `kind` 0 restricted, 1 throttled,
+    /// 2 squelched, 3 yell restricted (`0x6e3cb9`).
+    ChatRestricted { kind: u8 },
     /// `/played` (`SMSG_PLAYED_TIME`): total and this-level played time, in seconds. The player's
     /// played clock always takes `total` (`0x6cf470`); only `show` prints it and fires
     /// `TIME_PLAYED_MSG` (`0x4013f6`).

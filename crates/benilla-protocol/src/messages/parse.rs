@@ -902,7 +902,10 @@ fn parse_server_body(
         opcode::SMSG_CALENDAR_CLEAR_PENDING_ACTION => {
             ServerPacket::Calendar(CalendarPacket::ClearPendingAction)
         }
-        opcode::SMSG_CHAT_RESTRICTED => ServerPacket::ChatRestricted,
+        // One `u8`, the restriction's kind (`0x6e3cbf`).
+        opcode::SMSG_CHAT_RESTRICTED => ServerPacket::ChatRestricted {
+            kind: read_u8(&mut r)?,
+        },
         opcode::SMSG_PLAYED_TIME => {
             let (total, level, show) = chat::read_played_time(&mut r)?;
             ServerPacket::PlayedTime { total, level, show }

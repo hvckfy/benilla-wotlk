@@ -1,5 +1,5 @@
 //! The unsolicited world broadcasts, bytes built from the vmangos layout: `SMSG_SERVER_MESSAGE`,
-//! `SMSG_ZONE_UNDER_ATTACK`, `SMSG_DEFENSE_MESSAGE` and the bodyless `SMSG_CHAT_RESTRICTED`.
+//! `SMSG_ZONE_UNDER_ATTACK`, `SMSG_DEFENSE_MESSAGE` and `SMSG_CHAT_RESTRICTED`.
 
 mod common;
 
@@ -84,11 +84,16 @@ fn defense_message_decodes() {
     }
 }
 
-/// `SMSG_CHAT_RESTRICTED` (vmangos `Server/Packets/Chat.cpp:21-23`) has an empty body; the
-/// reference's handler reads nothing either.
+/// `SMSG_CHAT_RESTRICTED` is one `u8`, the kind 12340 reads at `0x6e3cbf`; an empty body is short.
 #[test]
-fn chat_restricted_is_bodyless() {
-    let p = messages::parse_server(messages::opcode::SMSG_CHAT_RESTRICTED, &[]).unwrap();
-    assert!(matches!(p, ServerPacket::ChatRestricted));
-    assert!(matches!(decode(p)[..], [SessionEvent::ChatRestricted]));
+fn chat_restricted_reads_its_kind() {
+    let (p, tail) =
+        messages::parse_server_with_tail(messages::opcode::SMSG_CHAT_RESTRICTED, &[2]).unwrap();
+    assert_eq!(tail, 0);
+    assert!(matches!(p, ServerPacket::ChatRestricted { kind: 2 }));
+    assert!(matches!(
+        decode(p)[..],
+        [SessionEvent::ChatRestricted { kind: 2 }]
+    ));
+    assert!(messages::parse_server(messages::opcode::SMSG_CHAT_RESTRICTED, &[]).is_err());
 }

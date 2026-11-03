@@ -115,7 +115,7 @@ fn on_broadcast(In(ev): In<SessionEvent>, mut chat_log: ResMut<ChatLog>) {
         SessionEvent::ServerMessage { message_type, text } => {
             Broadcast::Server { message_type, text }
         }
-        SessionEvent::ChatRestricted => Broadcast::ChatRestricted,
+        SessionEvent::ChatRestricted { kind } => Broadcast::ChatRestricted { kind },
         _ => return,
     };
     broadcast(b, &mut chat_log);

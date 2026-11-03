@@ -601,8 +601,10 @@ pub enum ServerPacket {
         difficulty: u32,
         dynamic: u32,
     },
-    /// `SMSG_CHAT_RESTRICTED`: a trial account hit its whisper cap; empty body.
-    ChatRestricted,
+    /// `SMSG_CHAT_RESTRICTED`: a chat message refused, `kind` saying why.
+    ChatRestricted {
+        kind: u8,
+    },
     /// `SMSG_PLAYED_TIME` (`/played`): total and this-level played time, in seconds, and whether
     /// the request asked to show it.
     PlayedTime {
@@ -1819,7 +1821,7 @@ impl ServerPacket {
             ServerPacket::Lfg(p) => p.name().into(),
             ServerPacket::Calendar(p) => p.name().into(),
             ServerPacket::InstanceDifficulty { .. } => "SMSG_INSTANCE_DIFFICULTY".into(),
-            ServerPacket::ChatRestricted => "SMSG_CHAT_RESTRICTED".into(),
+            ServerPacket::ChatRestricted { .. } => "SMSG_CHAT_RESTRICTED".into(),
             ServerPacket::PlayedTime { .. } => "SMSG_PLAYED_TIME".into(),
             ServerPacket::RandomRoll { .. } => "MSG_RANDOM_ROLL".into(),
             ServerPacket::InitialSpells { .. } => "SMSG_INITIAL_SPELLS".into(),

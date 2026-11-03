@@ -9,8 +9,8 @@
 //! whole map (`Map.cpp:1868`), but only rows 1, 2 and 22 carry `INITIAL`, so the auto-join never
 //! joins WorldDefense and in practice only LocalDefense, in the broadcast's zone, hears them.
 //!
-//! `SMSG_SERVER_MESSAGE` is one `CHAT_MSG_SYSTEM` line. `SMSG_CHAT_RESTRICTED` carries nothing and
-//! is error 451, `ERR_CHAT_RESTRICTED`, a chat row, not a red toast; vmangos never sends it.
+//! `SMSG_SERVER_MESSAGE` is one `CHAT_MSG_SYSTEM` line. `SMSG_CHAT_RESTRICTED`'s kind picks one of
+//! four chat rows, not red toasts: restricted, throttled, squelched or yell restricted.
 
 use bevy::prelude::*;
 
@@ -36,8 +36,8 @@ pub(crate) enum Broadcast {
     Defense { zone_id: u32, text: String },
     /// `SMSG_SERVER_MESSAGE`: a `ServerMessages.dbc` row id and the text for its `%s`.
     Server { message_type: u32, text: String },
-    /// `SMSG_CHAT_RESTRICTED`, which carries nothing.
-    ChatRestricted,
+    /// `SMSG_CHAT_RESTRICTED`: the kind of restriction.
+    ChatRestricted { kind: u8 },
 }
 
 /// Load `ServerMessages.dbc`; it must run after `benilla_assets::AssetSet::Open`, or it finds no
@@ -140,11 +140,15 @@ pub(super) fn feed_broadcasts(
                     .unwrap_or(zone_id);
                 push_channel_lines(&mut log, &channels, zone, player_zone, &text);
             }
-            Broadcast::ChatRestricted => {
-                // Its row is a chat row (tested below), so it is written as a system line here.
+            Broadcast::ChatRestricted { kind } => {
+                let Some(key) = chat_restricted_key(kind) else {
+                    debug!("chat: SMSG_CHAT_RESTRICTED kind {kind} shows nothing");
+                    continue;
+                };
+                // Each row is a chat row (tested below), so it is written as a system line here.
                 // Deviation: a missing global prints nothing, where the reference prints an empty
                 // line, because benilla's other error-display routes do the same.
-                if let Some(text) = super::combat::global_string(&script, "ERR_CHAT_RESTRICTED") {
+                if let Some(text) = super::combat::global_string(&script, key) {
                     log.push_event(ChatEvent::text_only(ChatEventKind::System, text));
                 }
             }
@@ -160,6 +164,18 @@ pub(super) fn feed_broadcasts(
             }
         }
     }
+}
+
+/// The error `SMSG_CHAT_RESTRICTED`'s kind shows, by 12340's table (`0x6e44d0`); a kind past 3
+/// shows nothing (`0x6e3ccb`).
+fn chat_restricted_key(kind: u8) -> Option<&'static str> {
+    const KEYS: [&str; 4] = [
+        "ERR_CHAT_RESTRICTED",
+        "ERR_CHAT_THROTTLED",
+        "ERR_USER_SQUELCHED",
+        "ERR_YELL_RESTRICTED",
+    ];
+    KEYS.get(usize::from(kind)).copied()
 }
 
 /// One `CHAT_MSG_CHANNEL` line per defense channel reached, with no sender or language: the
@@ -183,12 +199,22 @@ fn push_channel_lines(
 
 #[cfg(test)]
 mod tests {
-    /// `ERR_CHAT_RESTRICTED` (495) is a chat row, so the arm above writes a system line.
+    /// Each kind's error is a chat row, so the arm above writes a system line; past 3, none.
     #[test]
-    fn chat_restricted_is_a_chat_row() {
+    fn chat_restricted_kinds_are_chat_rows() {
         use benilla_ui::messages::{by_key, kind_of, MsgKind};
-        assert_eq!(by_key("ERR_CHAT_RESTRICTED").expect("a real row").id, 495);
-        assert_eq!(kind_of("ERR_CHAT_RESTRICTED"), MsgKind::Chat);
+        let rows = [
+            ("ERR_CHAT_RESTRICTED", 495),
+            ("ERR_CHAT_THROTTLED", 496),
+            ("ERR_USER_SQUELCHED", 561),
+            ("ERR_YELL_RESTRICTED", 679),
+        ];
+        for (kind, (key, id)) in rows.into_iter().enumerate() {
+            assert_eq!(super::chat_restricted_key(kind as u8), Some(key));
+            assert_eq!(by_key(key).expect("a real row").id, id);
+            assert_eq!(kind_of(key), MsgKind::Chat, "{key}");
+        }
+        assert_eq!(super::chat_restricted_key(4), None);
     }
 
     use super::*;
