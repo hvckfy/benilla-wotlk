@@ -390,6 +390,9 @@ pub fn decode(packet: ServerPacket) -> Vec<SessionEvent> {
             caster,
             delay_ms,
         }],
+        ServerPacket::HealthUpdate { guid, value } => {
+            vec![SessionEvent::HealthUpdate { guid, value }]
+        }
         ServerPacket::PowerUpdate {
             guid,
             power_type,

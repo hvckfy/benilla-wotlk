@@ -1638,6 +1638,11 @@ pub enum ServerPacket {
         /// One status per record, in arrival order.
         statuses: Vec<u8>,
     },
+    /// `SMSG_HEALTH_UPDATE`: a unit's predicted health.
+    HealthUpdate {
+        guid: u64,
+        value: u32,
+    },
     /// `SMSG_POWER_UPDATE`: a unit's power of one type, set outright.
     PowerUpdate {
         guid: u64,
@@ -1910,6 +1915,7 @@ impl ServerPacket {
             ServerPacket::CooldownEvent { .. } => "SMSG_COOLDOWN_EVENT".into(),
             ServerPacket::ClearCooldown { .. } => "SMSG_CLEAR_COOLDOWN".into(),
             ServerPacket::CooldownCheat { .. } => "SMSG_COOLDOWN_CHEAT".into(),
+            ServerPacket::HealthUpdate { .. } => "SMSG_HEALTH_UPDATE".into(),
             ServerPacket::PowerUpdate { .. } => "SMSG_POWER_UPDATE".into(),
             ServerPacket::ComboPoints { .. } => "SMSG_UPDATE_COMBO_POINTS".into(),
             ServerPacket::PetComboPoints { .. } => "SMSG_PET_UPDATE_COMBO_POINTS".into(),

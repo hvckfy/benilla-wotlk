@@ -5,6 +5,11 @@ use std::io;
 
 use crate::wire::{read_i32_le, read_packed_guid, read_u32_le, read_u64_le, read_u8};
 
+/// `SMSG_HEALTH_UPDATE` (`0x716d20`): `[packed guid][u32 health]` (`0x716d2f`, `0x716d3d`).
+pub(super) fn read_health_update(r: &mut &[u8]) -> io::Result<(u64, u32)> {
+    Ok((read_packed_guid(r)?, read_u32_le(r)?))
+}
+
 /// `SMSG_POWER_UPDATE` (`0x7236c0`): `[packed guid][u8 power type][u32 value]`.
 pub(super) fn read_power_update(r: &mut &[u8]) -> io::Result<(u64, u8, u32)> {
     Ok((read_packed_guid(r)?, read_u8(r)?, read_u32_le(r)?))
@@ -128,6 +133,22 @@ mod tests {
             read_power_update(&mut body.as_slice()).unwrap(),
             (0xF130_0000_0000_0042, 3, 95)
         );
+    }
+
+    #[test]
+    fn a_health_update_reads_guid_and_value() {
+        use crate::messages::{opcode, parse_server_with_tail, ServerPacket};
+        let mut body = packed(0xF130_0000_0000_0042);
+        body.extend(700u32.to_le_bytes());
+        let (p, tail) = parse_server_with_tail(opcode::SMSG_HEALTH_UPDATE, &body).unwrap();
+        assert_eq!(tail, 0);
+        assert!(matches!(
+            p,
+            ServerPacket::HealthUpdate {
+                guid: 0xF130_0000_0000_0042,
+                value: 700
+            }
+        ));
     }
 
     #[test]

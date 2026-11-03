@@ -425,7 +425,8 @@ pub struct ObjectFields {
 }
 
 /// What the client keeps beside a unit's descriptor and reads in its place: the power
-/// `SMSG_POWER_UPDATE` sets (the predicted-power set `0x722c50`, `[unit+0xfb4]`) and the mount
+/// `SMSG_POWER_UPDATE` sets (the predicted-power set `0x722c50`, `[unit+0xfb4]`), the health
+/// `SMSG_HEALTH_UPDATE` sets (`0x716d66`) and the mount
 /// `SMSG_DISMOUNT` drops ahead of the field (`0x741a40`). A move of the shadowed field drops the
 /// copy, as its field handler re-seeds it (`0x7234d0`, `0x7235c0`, `0x723620`). benilla predicts no
 /// spend, so the handler's keep-a-lower-prediction leg for our own unit never differs.
@@ -433,6 +434,8 @@ pub struct ObjectFields {
 struct Shadow {
     /// By power type, 0..7.
     power: [Option<u32>; 7],
+    /// The predicted health, read only while `predictedHealth` is set (`0x71c2c0`).
+    health: Option<u32>,
     dismounted: bool,
 }
 
@@ -728,6 +731,21 @@ impl ObjectFields {
         true
     }
 
+    /// `SMSG_HEALTH_UPDATE` (`0x716d66`): the unit's predicted health, until its field next moves.
+    /// Whether it moved.
+    pub fn set_predicted_health(&mut self, value: u32) -> bool {
+        if self.unit_predicted_health() == Some(value) {
+            return false;
+        }
+        self.shadow.get_or_insert_default().health = Some(value);
+        true
+    }
+
+    /// The predicted health `SMSG_HEALTH_UPDATE` set, while one stands.
+    pub fn unit_predicted_health(&self) -> Option<u32> {
+        self.shadow.as_deref()?.health
+    }
+
     /// `SMSG_DISMOUNT` (`0x741a40`): the mount reads 0 until its field next moves. Whether it
     /// dropped one; an unmounted unit is left alone.
     pub fn drop_mount(&mut self) -> bool {
@@ -768,6 +786,11 @@ fn follow_shadow(shadow: &mut Option<Box<Shadow>>, index: u16, new: u32) {
         .or_else(|| (index == FIELD_UNIT_BYTES_0).then_some((new >> 24) as u16));
     if let Some(slot) = slot.filter(|&t| t < 7) {
         s.power[usize::from(slot)] = None;
+    }
+    // Deviation: the reference's re-seed of the predicted health is not traced; a move of the
+    // health field drops it, as a power field's move drops that power's.
+    if index == FIELD_UNIT_HEALTH {
+        s.health = None;
     }
     if index == FIELD_UNIT_MOUNTDISPLAYID {
         s.dismounted = false;

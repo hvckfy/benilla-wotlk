@@ -179,6 +179,10 @@ impl Plugin for UiUnitPlugin {
             benilla_protocol::SessionEventKind::PowerUpdate,
             on_power_update,
         )
+        .net_handler(
+            benilla_protocol::SessionEventKind::HealthUpdate,
+            on_health_update,
+        )
         .add_systems(Update, drain_worn_display_toggles.after(UiInput))
         .add_systems(Update, drain_action_bar_toggles.after(UiInput))
         .add_systems(Update, feed_default_language.in_set(UnitFeed))
@@ -900,6 +904,7 @@ pub(crate) fn snapshot(
         // not the maxima, so its edge fires the reference's pair; the power getters divide rage by
         // 10 and happiness by 1000.
         health: store.0.unit_shown_health().unwrap_or(0),
+        predicted_health: store.0.unit_shown_predicted_health(),
         max_health: store.0.unit_max_health().unwrap_or(0),
         level: store.0.unit_level().unwrap_or(0),
         power_type,
@@ -1859,6 +1864,29 @@ fn on_power_update(
     }
 }
 
+/// `SMSG_HEALTH_UPDATE` (`0x716d20`): a resolved unit's predicted health (`0x716d66`), which
+/// `UnitHealth` reads while `predictedHealth` is set. The reference fires no event, and the feed
+/// fires none for it: `UNIT_HEALTH` follows the field.
+fn on_health_update(
+    In(ev): In<benilla_protocol::SessionEvent>,
+    index: Res<crate::net::GuidIndex>,
+    mut stores: Query<&mut ObjectStore>,
+) {
+    let benilla_protocol::SessionEvent::HealthUpdate { guid, value } = ev else {
+        return;
+    };
+    let Some(mut store) = index.0.get(&guid).and_then(|&e| stores.get_mut(e).ok()) else {
+        return;
+    };
+    if store
+        .bypass_change_detection()
+        .0
+        .set_predicted_health(value)
+    {
+        store.set_changed();
+    }
+}
+
 /// The bare unit feed, for a test driving the stock unit frames off engine state.
 #[cfg(test)]
 pub(crate) fn add_unit_feed(app: &mut App) {
@@ -1892,6 +1920,35 @@ fn feed_option_state(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `SMSG_HEALTH_UPDATE` seats the prediction on a resolved unit and skips one not held.
+    #[test]
+    fn a_health_update_predicts_a_held_units_health() {
+        use bevy::ecs::system::RunSystemOnce;
+        const WOLF: u64 = 0xF130_0000_4500_0001;
+        let mut world = World::new();
+        world.init_resource::<crate::net::GuidIndex>();
+        let wolf = world
+            .spawn(ObjectStore(benilla_protocol::ObjectFields::from_pairs(&[
+                (benilla_protocol::field::FIELD_UNIT_HEALTH, 400),
+            ])))
+            .id();
+        world
+            .resource_mut::<crate::net::GuidIndex>()
+            .0
+            .insert(WOLF, wolf);
+        for guid in [WOLF, 0xF130_0000_4500_0002] {
+            world
+                .run_system_once_with(
+                    on_health_update,
+                    benilla_protocol::SessionEvent::HealthUpdate { guid, value: 650 },
+                )
+                .expect("the handler runs as a one-shot system");
+        }
+        let store = &world.get::<ObjectStore>(wolf).unwrap().0;
+        assert_eq!(store.unit_predicted_health(), Some(650));
+        assert_eq!(store.unit_health(), Some(400), "the field is untouched");
+    }
 
     /// `"mouseover"` resolves through the pick the tooltip publishes: the hovered unit, until a
     /// nearer GameObject wins it and the resolver rejects the GameObject's guid.
