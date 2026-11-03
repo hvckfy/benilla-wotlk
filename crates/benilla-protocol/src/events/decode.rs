@@ -1116,6 +1116,9 @@ pub fn decode(packet: ServerPacket) -> Vec<SessionEvent> {
         ServerPacket::ArenaTeamStats(t) => vec![SessionEvent::ArenaTeamStats(t)],
         ServerPacket::ArenaTeamCommandResult(t) => vec![SessionEvent::ArenaTeamCommandResult(t)],
         ServerPacket::ArenaTeamEvent(t) => vec![SessionEvent::ArenaTeamEvent(t)],
+        ServerPacket::ArenaTeamChangeFailedQueued { failed } => {
+            vec![SessionEvent::ArenaTeamChangeFailedQueued { failed }]
+        }
         ServerPacket::ArenaTeamInvite { inviter, team } => {
             vec![SessionEvent::ArenaTeamInvite { inviter, team }]
         }

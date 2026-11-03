@@ -16,8 +16,9 @@ pub(super) fn register(app: &mut App) {
     use SessionEventKind as K;
     app.net_handler(K::Chat, on_chat)
         .net_handler(K::ChannelList, on_channel_list)
-        .net_handler(K::ChatPlayerNotFound, on_whisper_refusal)
-        .net_handler(K::ChatWrongFaction, on_whisper_refusal)
+        .net_handler(K::ChatPlayerNotFound, on_refusal)
+        .net_handler(K::ChatWrongFaction, on_refusal)
+        .net_handler(K::ArenaTeamChangeFailedQueued, on_refusal)
         .net_handler(K::ZoneUnderAttack, on_broadcast)
         .net_handler(K::DefenseMessage, on_broadcast)
         .net_handler(K::ServerMessage, on_broadcast)
@@ -99,10 +100,13 @@ pub(super) fn feed_channel_roster_names(
     }
 }
 
-fn on_whisper_refusal(In(ev): In<SessionEvent>, mut errors: ResMut<UiErrorKeys>) {
+fn on_refusal(In(ev): In<SessionEvent>, mut errors: ResMut<UiErrorKeys>) {
     match ev {
         SessionEvent::ChatPlayerNotFound { name } => chat_player_not_found(&name, &mut errors),
         SessionEvent::ChatWrongFaction => chat_wrong_faction(&mut errors),
+        SessionEvent::ArenaTeamChangeFailedQueued { failed } => {
+            arena_team_change_failed_queued(failed, &mut errors)
+        }
         _ => {}
     }
 }
@@ -262,6 +266,16 @@ fn chat_wrong_faction(errors: &mut crate::ui_action::UiErrorKeys) {
         .push(crate::ui_action::UiError::key("ERR_CHAT_WRONG_FACTION"));
 }
 
+/// `SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED`, in the same handler as the chat refusals
+/// (`0x6e40a8`): a nonzero `u32` shows message `0x295`, `ERR_ARENA_TEAM_CHANGE_FAILED_QUEUED`.
+fn arena_team_change_failed_queued(failed: u32, errors: &mut crate::ui_action::UiErrorKeys) {
+    if failed != 0 {
+        errors.0.push(crate::ui_action::UiError::key(
+            "ERR_ARENA_TEAM_CHANGE_FAILED_QUEUED",
+        ));
+    }
+}
+
 /// `SMSG_NOTIFICATION` (`0x1cb`): the red `UIErrorsFrame` line, `UI_ERROR_MESSAGE` from
 /// `(text, 1)`, never a chat line. vmangos sends `.gm on` as both a system line and a notification
 /// (`Objects/Player.cpp:2676-2677`).
@@ -321,6 +335,20 @@ mod tests {
             chat_tag: 0,
             achievement: 0,
         }
+    }
+
+    /// Only a nonzero `u32` shows the queued-change error, a red toast row (661).
+    #[test]
+    fn a_queued_team_change_failure_shows_only_when_set() {
+        let mut errors = UiErrorKeys::default();
+        arena_team_change_failed_queued(0, &mut errors);
+        assert!(errors.0.is_empty());
+        arena_team_change_failed_queued(1, &mut errors);
+        let keys: Vec<_> = errors.0.iter().map(|e| e.key).collect();
+        assert_eq!(keys, ["ERR_ARENA_TEAM_CHANGE_FAILED_QUEUED"]);
+        let row = benilla_ui::messages::by_key(keys[0]).expect("a real row");
+        assert_eq!(row.id, 0x295);
+        assert_eq!(row.kind, benilla_ui::messages::MsgKind::Error);
     }
 
     /// Run one inbound line through the real arm body and report whether it reached the chat log.
