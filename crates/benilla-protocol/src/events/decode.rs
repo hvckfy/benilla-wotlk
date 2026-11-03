@@ -195,7 +195,7 @@ pub fn decode(packet: ServerPacket) -> Vec<SessionEvent> {
         ServerPacket::DefenseMessage { zone_id, text } => {
             vec![SessionEvent::DefenseMessage { zone_id, text }]
         }
-        ServerPacket::ChatRestricted => vec![SessionEvent::ChatRestricted],
+        ServerPacket::ChatRestricted { kind } => vec![SessionEvent::ChatRestricted { kind }],
         ServerPacket::PlayedTime { total, level, show } => {
             vec![SessionEvent::PlayedTime { total, level, show }]
         }
