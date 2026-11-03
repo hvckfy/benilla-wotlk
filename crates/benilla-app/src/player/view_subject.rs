@@ -5,8 +5,8 @@
 //! looks through that guid, zero comes home. vmangos defers the set by 400 ms
 //! (`Player::ScheduleCameraUpdate`, `Player.cpp:19136`), so the subject has streamed first, and
 //! sends the clear at once to every client in range (`DirectSendPublicValueUpdate`), so only our
-//! [`SelfPlayer`] store is read; it never sends `SMSG_CLEAR_FAR_SIGHT_IMMEDIATE`. Mind Control
-//! sets the same field (`SpellAuras.cpp:2975`).
+//! [`SelfPlayer`] store is read. Mind Control sets the same field (`SpellAuras.cpp:2975`).
+//! `SMSG_CLEAR_FAR_SIGHT_IMMEDIATE` ends far sight before the field clears ([`FarSightCleared`]).
 
 use bevy::prelude::*;
 
@@ -19,6 +19,11 @@ use crate::net::{ClientCommand, GuidIndex, NetCommands, ObjectStore, SelfPlayer}
 pub(crate) struct ViewSubject {
     pub(crate) remote: Option<RemoteView>,
 }
+
+/// The far-sight guid `SMSG_CLEAR_FAR_SIGHT_IMMEDIATE` turned off (`0x6e2b0e`): the camera stays
+/// on the body while `PLAYER_FARSIGHT` still names it, and the next change of the field ends it.
+#[derive(Resource, Default)]
+pub(crate) struct FarSightCleared(pub(crate) Option<u64>);
 
 /// A vehicle seat's camera focus (`0x759200`), which the camera orbits while no far sight does:
 /// the vehicle, or our body, at the seat's camera offset.
@@ -59,13 +64,18 @@ pub(super) fn publish_view_subject(
     )>,
     net: Res<NetCommands>,
     vehicle: Option<Res<VehicleFocus>>,
+    mut cleared: ResMut<FarSightCleared>,
     mut engaged: Local<Option<u64>>,
 ) {
     let anchor = self_store
         .iter()
         .next()
         .and_then(|store| store.0.player_farsight());
+    if cleared.0.is_some() && cleared.0 != anchor {
+        cleared.0 = None;
+    }
     subject.remote = anchor
+        .filter(|&guid| cleared.0 != Some(guid))
         .and_then(|guid| index.0.get(&guid).copied())
         .and_then(|entity| Some((entity, poses.get(entity).ok()?)))
         .map(|(entity, (t, pivot, net))| RemoteView {
@@ -97,6 +107,7 @@ mod tests {
         let (tx, rx) = crossbeam_channel::unbounded();
         let mut app = App::new();
         app.init_resource::<ViewSubject>()
+            .init_resource::<FarSightCleared>()
             .init_resource::<GuidIndex>()
             .insert_resource(NetCommands(tx))
             .add_systems(Update, publish_view_subject);
@@ -189,8 +200,65 @@ mod tests {
         app.update();
         assert!(
             app.world().resource::<ViewSubject>().remote.is_none(),
-            "a zeroed field is the ONLY teardown signal there is — no CLEAR_FAR_SIGHT_IMMEDIATE"
+            "a zeroed field tears the view down"
         );
         assert_eq!(votes(&rx), [false], "and the release votes 0, once");
+    }
+
+    /// A cleared guid stays off while the field still names it; any change of the field ends the
+    /// clear, so a far sight set again (or a new one) views as usual.
+    #[test]
+    fn a_cleared_far_sight_stays_on_the_body_until_the_field_moves() {
+        const FARSIGHT: u16 = 712;
+        let (tx, _rx) = crossbeam_channel::unbounded();
+        let mut app = App::new();
+        app.init_resource::<ViewSubject>()
+            .init_resource::<FarSightCleared>()
+            .init_resource::<GuidIndex>()
+            .insert_resource(NetCommands(tx))
+            .add_systems(Update, publish_view_subject);
+        let subject = app
+            .world_mut()
+            .spawn(Transform::from_xyz(100.0, 0.0, 0.0))
+            .id();
+        app.world_mut()
+            .resource_mut::<GuidIndex>()
+            .0
+            .insert(0x1234, subject);
+        let me = app
+            .world_mut()
+            .spawn((
+                SelfPlayer,
+                ObjectStore(benilla_protocol::ObjectFields::from_pairs(&[])),
+            ))
+            .id();
+        let set = |app: &mut App, lo: u32| {
+            *app.world_mut().get_mut::<ObjectStore>(me).unwrap() =
+                ObjectStore(benilla_protocol::ObjectFields::from_pairs(&[
+                    (FARSIGHT, lo),
+                    (FARSIGHT + 1, 0),
+                ]));
+        };
+        let viewing = |app: &App| app.world().resource::<ViewSubject>().remote.is_some();
+
+        set(&mut app, 0x1234);
+        app.update();
+        assert!(viewing(&app));
+
+        app.world_mut().resource_mut::<FarSightCleared>().0 = Some(0x1234);
+        app.update();
+        assert!(!viewing(&app), "the clear sends the camera home at once");
+        app.update();
+        assert!(
+            !viewing(&app),
+            "and holds while the field still names the subject"
+        );
+
+        set(&mut app, 0);
+        app.update();
+        assert_eq!(app.world().resource::<FarSightCleared>().0, None);
+        set(&mut app, 0x1234);
+        app.update();
+        assert!(viewing(&app), "a far sight set again views");
     }
 }

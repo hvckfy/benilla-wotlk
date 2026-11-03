@@ -525,6 +525,11 @@ impl PivotGlide {
         self.channel.advance(dt)
     }
 
+    /// The next height snaps instead of gliding, as the first does.
+    pub(super) fn snap_next(&mut self) {
+        self.seeded = false;
+    }
+
     /// `(live, target)`, for `WOW_CAM_DUMP`.
     pub(super) fn probe(&self) -> (f32, f32) {
         self.channel.probe()

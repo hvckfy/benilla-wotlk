@@ -779,6 +779,8 @@ fn parse_server_body(
             name: chat::read_chat_player_not_found(&mut r)?,
         },
         opcode::SMSG_CHAT_WRONG_FACTION => ServerPacket::ChatWrongFaction,
+        // The handler reads nothing (`0x6e38d4`).
+        opcode::SMSG_CLEAR_FAR_SIGHT_IMMEDIATE => ServerPacket::ClearFarSightImmediate,
         opcode::SMSG_NOTIFICATION => ServerPacket::Notification {
             text: chat::read_notification(&mut r)?,
         },

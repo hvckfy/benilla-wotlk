@@ -173,6 +173,7 @@ pub fn decode(packet: ServerPacket) -> Vec<SessionEvent> {
             vec![SessionEvent::ChatPlayerNotFound { name }]
         }
         ServerPacket::ChatWrongFaction => vec![SessionEvent::ChatWrongFaction],
+        ServerPacket::ClearFarSightImmediate => vec![SessionEvent::ClearFarSightImmediate],
         ServerPacket::Notification { text } => vec![SessionEvent::Notification { text }],
         ServerPacket::AreaTriggerMessage { text } => {
             vec![SessionEvent::AreaTriggerMessage { text }]
