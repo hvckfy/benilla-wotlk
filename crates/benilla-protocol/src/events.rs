@@ -701,6 +701,9 @@ pub enum SessionEvent {
     ChatPlayerNotFound { name: String },
     /// A cross-faction whisper was refused (`SMSG_CHAT_WRONG_FACTION`); empty body.
     ChatWrongFaction,
+    /// Far sight ends now, not on the `PLAYER_FARSIGHT` update, and the camera snaps back to the
+    /// player (`SMSG_CLEAR_FAR_SIGHT_IMMEDIATE`, `0x6e2b00`).
+    ClearFarSightImmediate,
     /// A server notice (`SMSG_NOTIFICATION`) the reference flashes in UIErrorsFrame.
     Notification { text: String },
     /// Why an area trigger refused (`SMSG_AREA_TRIGGER_MESSAGE`), shown as a notification.

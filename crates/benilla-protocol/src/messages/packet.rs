@@ -571,6 +571,8 @@ pub enum ServerPacket {
     },
     /// `SMSG_CHAT_WRONG_FACTION`: a cross-faction whisper was refused; empty body.
     ChatWrongFaction,
+    /// `SMSG_CLEAR_FAR_SIGHT_IMMEDIATE`: far sight ends now; empty body.
+    ClearFarSightImmediate,
     /// `SMSG_NOTIFICATION`: one cstring server notice (`WorldSession.cpp:900-915`).
     Notification {
         text: String,
@@ -1838,6 +1840,7 @@ impl ServerPacket {
             ServerPacket::ChannelList { .. } => "SMSG_CHANNEL_LIST".into(),
             ServerPacket::ChatPlayerNotFound { .. } => "SMSG_CHAT_PLAYER_NOT_FOUND".into(),
             ServerPacket::ChatWrongFaction => "SMSG_CHAT_WRONG_FACTION".into(),
+            ServerPacket::ClearFarSightImmediate => "SMSG_CLEAR_FAR_SIGHT_IMMEDIATE".into(),
             ServerPacket::Notification { .. } => "SMSG_NOTIFICATION".into(),
             ServerPacket::AreaTriggerMessage { .. } => "SMSG_AREA_TRIGGER_MESSAGE".into(),
             ServerPacket::ServerMessage { .. } => "SMSG_SERVER_MESSAGE".into(),

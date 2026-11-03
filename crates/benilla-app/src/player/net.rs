@@ -17,7 +17,33 @@ pub(super) fn register(app: &mut App) {
         .net_handler(
             SessionEventKind::MoveSetCollisionHeight,
             on_set_collision_height,
-        );
+        )
+        .net_handler(SessionEventKind::ClearFarSightImmediate, on_clear_far_sight);
+}
+
+/// `SMSG_CLEAR_FAR_SIGHT_IMMEDIATE` (`0x6e2b00`): with our player held and far sight on (its
+/// subject resolved), far sight goes off (`0x6e2b0e`) and the camera snaps back to the body
+/// (`0x6e2b26`) rather than gliding there, without waiting for `PLAYER_FARSIGHT` to clear.
+fn on_clear_far_sight(
+    In(ev): In<SessionEvent>,
+    me: Query<&crate::net::ObjectStore, With<SelfPlayer>>,
+    index: Res<crate::net::GuidIndex>,
+    mut cleared: ResMut<super::view_subject::FarSightCleared>,
+    rig: Option<ResMut<super::camera::CameraControl>>,
+) {
+    if !matches!(ev, SessionEvent::ClearFarSightImmediate) {
+        return;
+    }
+    let Some(guid) = me.iter().next().and_then(|store| store.0.player_farsight()) else {
+        return;
+    };
+    if cleared.0 == Some(guid) || !index.0.contains_key(&guid) {
+        return;
+    }
+    cleared.0 = Some(guid);
+    if let Some(mut rig) = rig {
+        rig.pivot.snap_next();
+    }
 }
 
 /// `SMSG_TIME_SYNC_REQ` (`0x6dc010`): with our player held, the counter and the movement clock
@@ -83,5 +109,57 @@ fn on_set_collision_height(
 fn on_stand_state_update(In(ev): In<SessionEvent>, mut out: MessageWriter<ServerStandState>) {
     if let SessionEvent::StandStateUpdate { state } = ev {
         out.write(ServerStandState { state });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::ecs::system::RunSystemOnce;
+
+    use super::*;
+    use crate::net::{GuidIndex, ObjectStore};
+    use crate::player::view_subject::FarSightCleared;
+
+    /// A world holding our player, whose `PLAYER_FARSIGHT` names `guid`, streamed or not.
+    fn world_viewing(guid: u32, streamed: bool) -> World {
+        const FARSIGHT: u16 = 712;
+        let mut world = World::new();
+        world.init_resource::<FarSightCleared>();
+        world.init_resource::<GuidIndex>();
+        world.spawn((
+            SelfPlayer,
+            ObjectStore(benilla_protocol::ObjectFields::from_pairs(&[
+                (FARSIGHT, guid),
+                (FARSIGHT + 1, 0),
+            ])),
+        ));
+        if streamed {
+            let subject = world.spawn_empty().id();
+            world
+                .resource_mut::<GuidIndex>()
+                .0
+                .insert(u64::from(guid), subject);
+        }
+        world
+    }
+
+    fn clear(world: &mut World) -> Option<u64> {
+        world
+            .run_system_once_with(on_clear_far_sight, SessionEvent::ClearFarSightImmediate)
+            .expect("the handler runs as a one-shot system");
+        world.resource::<FarSightCleared>().0
+    }
+
+    /// The clear turns off a far sight that is on: our field names a streamed subject.
+    #[test]
+    fn the_clear_ends_a_resolved_far_sight() {
+        assert_eq!(clear(&mut world_viewing(0x1234, true)), Some(0x1234));
+    }
+
+    /// With no far sight on, or one whose subject has not streamed, there is nothing to end.
+    #[test]
+    fn the_clear_without_a_far_sight_does_nothing() {
+        assert_eq!(clear(&mut world_viewing(0, true)), None);
+        assert_eq!(clear(&mut world_viewing(0x1234, false)), None);
     }
 }

@@ -793,6 +793,8 @@ pub const CMSG_REQUEST_ACCOUNT_DATA: u16 = 0x020A;
 pub const CMSG_UPDATE_ACCOUNT_DATA: u16 = 0x020B;
 /// One account-data slot's bytes down (`0x6b9730`).
 pub const SMSG_UPDATE_ACCOUNT_DATA: u16 = 0x020C;
+/// End far sight now and snap the camera home; empty body (`0x6e38d4`).
+pub const SMSG_CLEAR_FAR_SIGHT_IMMEDIATE: u16 = 0x020D; // 525
 /// The server stored an upload: slot and result, read and ignored (`0x6b8fc0`).
 pub const SMSG_UPDATE_ACCOUNT_DATA_COMPLETE: u16 = 0x0463;
 /// The character screen is up: send the account's times (`ReadyForAccountDataTimes` `0x4de390`).
