@@ -71,6 +71,9 @@ pub struct UnitState {
     pub name: Option<String>,
     /// Current health (`UnitHealth`).
     pub health: u32,
+    /// The predicted health `SMSG_HEALTH_UPDATE` set, which `UnitHealth` reads instead while
+    /// `predictedHealth` is set (`0x71c2c0`).
+    pub predicted_health: Option<u32>,
     /// Maximum health (`UnitHealthMax`).
     pub max_health: u32,
     /// Level (`UnitLevel`).

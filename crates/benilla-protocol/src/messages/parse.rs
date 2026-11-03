@@ -1124,6 +1124,10 @@ fn parse_server_body(
             let (spell_id, caster) = spellbook::read_cooldown_event(&mut r)?;
             ServerPacket::ClearCooldown { spell_id, caster }
         }
+        opcode::SMSG_HEALTH_UPDATE => {
+            let (guid, value) = unit_state::read_health_update(&mut r)?;
+            ServerPacket::HealthUpdate { guid, value }
+        }
         opcode::SMSG_POWER_UPDATE => {
             let (guid, power_type, value) = unit_state::read_power_update(&mut r)?;
             ServerPacket::PowerUpdate {

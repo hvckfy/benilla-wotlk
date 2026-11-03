@@ -1425,6 +1425,8 @@ pub const SMSG_CALENDAR_CLEAR_PENDING_ACTION: u16 = 0x04BB; // 1211
 /// The group outside a battleground, sent while in one (`0x6cc300`).
 pub const SMSG_REAL_GROUP_UPDATE: u16 = 0x0397; // 919
 
+/// A unit's predicted health: `[packed guid][u32]` (`0x716d20`).
+pub const SMSG_HEALTH_UPDATE: u16 = 0x047F; // 1151
 /// A unit's power, set outright (`0x7236c0`).
 pub const SMSG_POWER_UPDATE: u16 = 0x0480; // 1152
 /// Our combo points and the unit they sit on (the game UI's message handler, `0x526530`).

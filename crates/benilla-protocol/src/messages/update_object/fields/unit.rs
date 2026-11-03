@@ -159,6 +159,14 @@ impl ObjectFields {
         }
         self.unit_health()
     }
+    /// The predicted health as `UnitHealth` reads it with `predictedHealth` set: none under
+    /// `UNIT_DYNFLAG_DEAD`, which reads 0 either way.
+    pub fn unit_shown_predicted_health(&self) -> Option<u32> {
+        if self.unit_dynamic_flags() & UNIT_DYNFLAG_DEAD != 0 {
+            return None;
+        }
+        self.unit_predicted_health()
+    }
     /// Power as `UnitMana` reads it: 0 under `UNIT_DYNFLAG_DEAD`, else divided by
     /// [`power_display_scale`]. Its `POWER_HEALTH` leg compares a zero-extended byte with -2, so it
     /// never matches and is left out.

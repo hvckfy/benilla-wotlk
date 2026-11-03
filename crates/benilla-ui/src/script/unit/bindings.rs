@@ -267,7 +267,10 @@ pub(in crate::script) fn install(lua: &Lua) -> mlua::Result<()> {
                 token,
                 r#"Usage: UnitHealth("unit")"#,
             )?);
-            with_unit(lua, &token, 0i64, |u| i64::from(u.health))
+            let predicted = predicted_health_on(lua);
+            with_unit(lua, &token, 0i64, |u| {
+                i64::from(u.predicted_health.filter(|_| predicted).unwrap_or(u.health))
+            })
         })?,
     )?;
 
@@ -1458,6 +1461,17 @@ pub(in crate::script) fn install(lua: &Lua) -> mlua::Result<()> {
 }
 
 /// The power-type string (`0x7fe4b0`): the power type's token, "" past the seven.
+/// The `predictedHealth` CVar `UnitHealth` tests (`0x71c2c5`); off while unregistered.
+fn predicted_health_on(lua: &Lua) -> bool {
+    let model = lua
+        .app_data_ref::<crate::script::ModelCell>()
+        .expect("model app_data");
+    model
+        .cvars
+        .get("predictedhealth")
+        .is_some_and(|c| crate::script::cvars::sstr_to_int(&c.value) != 0)
+}
+
 fn power_token(ty: u8) -> &'static str {
     const TOKENS: [&str; 7] = [
         "MANA",

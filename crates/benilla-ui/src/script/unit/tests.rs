@@ -524,6 +524,32 @@ fn target_nearest_queues_its_mode_and_reverse_flag() {
     assert!(s.take_target_nearest_requests().is_empty());
 }
 
+/// `UnitHealth` reads the predicted health while `predictedHealth` is set, the field otherwise
+/// (`0x71c2c0`); `UnitHealthMax` never moves.
+#[test]
+fn unit_health_reads_the_prediction_while_predicted_health_is_set() {
+    let mut s = UiScript::new().unwrap();
+    s.register_cvars([("predictedHealth", "1")]);
+    s.set_unit(
+        "player",
+        Some(UnitState {
+            predicted_health: Some(90),
+            ..player()
+        }),
+    );
+    let health = |s: &UiScript| s.eval::<i64>(r#"return UnitHealth("player")"#).unwrap();
+    assert_eq!(health(&s), 90);
+    s.run("SetCVar('predictedHealth', '0')").unwrap();
+    assert_eq!(health(&s), 72);
+    assert_eq!(
+        s.eval::<i64>(r#"return UnitHealthMax("player")"#).unwrap(),
+        100
+    );
+    s.run("SetCVar('predictedHealth', '1')").unwrap();
+    s.set_unit("player", Some(player()));
+    assert_eq!(health(&s), 72, "no prediction reads the field");
+}
+
 #[test]
 fn set_unit_is_read_by_the_bindings() {
     let mut s = UiScript::new().unwrap();

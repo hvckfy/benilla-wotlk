@@ -929,6 +929,43 @@ fn a_predicted_power_reads_until_its_field_moves() {
     assert!(!f.set_predicted_power(7, 1), "seven slots");
 }
 
+/// A predicted health stands until the health field moves (`0x716d66`); the field still reads raw,
+/// and feign death shows none.
+#[test]
+fn a_predicted_health_stands_until_its_field_moves() {
+    let mut f = ObjectFields::from_pairs(&[(FIELD_UNIT_HEALTH, 400), (FIELD_UNIT_MAXHEALTH, 1000)])
+        .into_created(ObjectType::Unit);
+    assert_eq!(f.unit_predicted_health(), None);
+    assert!(f.set_predicted_health(700));
+    assert!(!f.set_predicted_health(700), "the same value moves nothing");
+    assert_eq!(f.unit_health(), Some(400), "the field reads raw");
+    assert_eq!(f.unit_shown_predicted_health(), Some(700));
+
+    f.merge(ObjectFields::from_pairs(&[(FIELD_UNIT_HEALTH, 400)]));
+    assert_eq!(
+        f.unit_predicted_health(),
+        Some(700),
+        "an unchanged field keeps it"
+    );
+    f.merge(ObjectFields::from_pairs(&[(FIELD_UNIT_MAXHEALTH, 1200)]));
+    assert_eq!(f.unit_predicted_health(), Some(700));
+    f.merge(ObjectFields::from_pairs(&[(
+        FIELD_UNIT_DYNAMIC_FLAGS,
+        0x20, // UNIT_DYNFLAG_DEAD
+    )]));
+    assert_eq!(
+        f.unit_shown_predicted_health(),
+        None,
+        "feign death reads the field's 0"
+    );
+    f.merge(ObjectFields::from_pairs(&[(FIELD_UNIT_HEALTH, 650)]));
+    assert_eq!(
+        f.unit_predicted_health(),
+        None,
+        "the field moved: it reads again"
+    );
+}
+
 /// A dropped mount reads 0 until the mount field moves, a re-create included (`0x741a40`).
 #[test]
 fn a_dropped_mount_reads_zero_until_its_field_moves() {

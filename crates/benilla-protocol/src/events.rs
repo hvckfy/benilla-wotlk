@@ -889,6 +889,9 @@ pub enum SessionEvent {
         caster: u64,
         delay_ms: i32,
     },
+    /// A unit's predicted health (`SMSG_HEALTH_UPDATE`), which `UnitHealth` reads while
+    /// `predictedHealth` is set; no event fires.
+    HealthUpdate { guid: u64, value: u32 },
     /// A unit's power of one type, set outright (`SMSG_POWER_UPDATE`).
     PowerUpdate {
         guid: u64,
