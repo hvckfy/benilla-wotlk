@@ -188,6 +188,23 @@ pub fn arena_team_named(team_id: u32, name: &str) -> Vec<u8> {
 mod tests {
     use super::*;
 
+    /// `SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED` is one `u32` (`0x6e40aa`).
+    #[test]
+    fn the_queued_change_failure_reads_its_u32() {
+        use crate::messages::{opcode, parse_server_with_tail, ServerPacket};
+        let (p, tail) =
+            parse_server_with_tail(opcode::SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED, &[1, 0, 0, 0])
+                .unwrap();
+        assert_eq!(tail, 0);
+        assert!(matches!(
+            p,
+            ServerPacket::ArenaTeamChangeFailedQueued { failed: 1 }
+        ));
+        assert!(
+            parse_server_with_tail(opcode::SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED, &[1]).is_err()
+        );
+    }
+
     #[test]
     fn the_roster_reads_the_optional_ratings() {
         let mut b = 9u32.to_le_bytes().to_vec();

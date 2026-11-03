@@ -385,6 +385,10 @@ pub enum ServerPacket {
         inviter: String,
         team: String,
     },
+    /// `SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED`: a team change refused while the team is queued.
+    ArenaTeamChangeFailedQueued {
+        failed: u32,
+    },
     /// `SMSG_BATTLEGROUND_PLAYER_JOINED` / `_LEFT`: one guid each.
     BattlegroundPlayer {
         guid: u64,
@@ -1762,6 +1766,9 @@ impl ServerPacket {
             ServerPacket::ArenaTeamCommandResult(_) => "SMSG_ARENA_TEAM_COMMAND_RESULT".into(),
             ServerPacket::ArenaTeamEvent(_) => "SMSG_ARENA_TEAM_EVENT".into(),
             ServerPacket::ArenaTeamInvite { .. } => "SMSG_ARENA_TEAM_INVITE".into(),
+            ServerPacket::ArenaTeamChangeFailedQueued { .. } => {
+                "SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED".into()
+            }
             ServerPacket::BattlegroundPlayer { joined: true, .. } => {
                 "SMSG_BATTLEGROUND_PLAYER_JOINED".into()
             }

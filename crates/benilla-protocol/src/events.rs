@@ -493,6 +493,9 @@ pub enum SessionEvent {
     ArenaTeamEvent(crate::messages::ArenaTeamEvent),
     /// An invitation to an arena team (`SMSG_ARENA_TEAM_INVITE`).
     ArenaTeamInvite { inviter: String, team: String },
+    /// A team change refused while queued (`SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED`); only a
+    /// nonzero `failed` shows `ERR_ARENA_TEAM_CHANGE_FAILED_QUEUED` (`0x6e40b7`).
+    ArenaTeamChangeFailedQueued { failed: u32 },
     /// `SMSG_BATTLEGROUND_PLAYER_JOINED`/`_LEFT`, printed once the name cache has the guid.
     BattlegroundPlayer { guid: u64, joined: bool },
     /// The meeting-stone queue state (`SMSG 0x295`): the area queued for and a status byte.

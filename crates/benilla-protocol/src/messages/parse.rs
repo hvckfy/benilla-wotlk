@@ -654,6 +654,10 @@ fn parse_server_body(
             let (inviter, team) = arena_team::read_arena_team_invite(&mut r)?;
             ServerPacket::ArenaTeamInvite { inviter, team }
         }
+        // One `u32` (`0x6e40aa`).
+        opcode::SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED => ServerPacket::ArenaTeamChangeFailedQueued {
+            failed: read_u32_le(&mut r)?,
+        },
         opcode::SMSG_BATTLEGROUND_PLAYER_JOINED => ServerPacket::BattlegroundPlayer {
             guid: crate::wire::read_u64_le(&mut r)?,
             joined: true,

@@ -914,6 +914,8 @@ pub const CMSG_ARENA_TEAM_DISBAND: u16 = 0x0355; // 853
 pub const CMSG_ARENA_TEAM_LEADER: u16 = 0x0356; // 854
 pub const SMSG_ARENA_TEAM_EVENT: u16 = 0x0357; // 855
 pub const SMSG_ARENA_TEAM_STATS: u16 = 0x035B; // 859
+/// A team change refused while queued: one `u32`, nonzero to show the error (`0x6e40a8`).
+pub const SMSG_ARENA_TEAM_CHANGE_FAILED_QUEUED: u16 = 0x04C8; // 1224
 /// Sent on adopting a new area spirit healer: `u64 guid`; [`SMSG_AREA_SPIRIT_HEALER_TIME`] answers.
 pub const CMSG_AREA_SPIRIT_HEALER_QUERY: u16 = 0x02E2; // 738
 /// `AcceptAreaSpiritHeal()`: the cached area healer's `u64 guid`, never an argument.
